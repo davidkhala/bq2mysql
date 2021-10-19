@@ -1,10 +1,10 @@
 set -e
 
+region=${region:-"ap-seoul-1"}
 config() {
 
-    if [[ -z "$region" ]]; then
-        export region=$(curl -s http://169.254.169.254/opc/v1/instance/ | jq -r '.region')
-    fi
+    : "${access_key_id:=$1}"
+    : "${secret_access_key:=$2}"
 
     if [[ -z "$ocid_tenancy" ]]; then
         export ocid_tenancy=$(oci os ns get-metadata --query 'data."default-s3-compartment-id"' --raw-output)
@@ -14,20 +14,12 @@ config() {
         export namespace_bucket=$(oci os ns get | jq -r '.data')
     fi
 
-
-    rclone config create "OCI-bucket-${namespace_bucket}" S3 [provider Other] [$access_key_id $secret_access_key] [endpoint ${namespace_bucket}.compat.objectstorage.$REGION.oraclecloud.com]
-
-#   sudo tee ~/.rclone.conf << EOF
-# [OCI-bucket-${namespace_bucket}]
-# type = s3
-# provider = Other
-# env_auth = false
-# access_key_id = <ACCESS KEY>
-# secret_access_key = <SECRET KEY>
-# endpoint = <NAMESPACE>.compat.objectstorage.<REGION>.oraclecloud.com
-# EOF
-    
-
+    rclone config create "oci-${region}-${namespace_bucket}" s3 provider=Other access_key_id=$access_key_id secret_access_key=$secret_access_key region=$region endpoint=${namespace_bucket}.compat.objectstorage.$region.oraclecloud.com
+}
+list() {
+    remote=${profile:-$1}
+    path=${path:-$2}
+    rclone lsf $remote:$path
 }
 
 $@
